@@ -9,8 +9,6 @@
 #include <unordered_set>
 
 #include "common/unbuffered_channel.h"
-#include "glog/logging.h"
-#include "glog/stl_logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -317,7 +315,7 @@ TEST(UnbufferedChannel, ThreadSafety_MultipleReaders_SingleWriter) {
                                       std::set<int> got;
                                       for (int j = 0; j < kNumReads; ++j) {
                                         int v = 0;
-                                        CHECK(ch.Read(&v));
+                                        if (!ch.Read(&v)) RawFatal("read");
                                         got.insert(v);
                                       }
                                       return got;
@@ -444,7 +442,6 @@ TEST(UnbufferedChannel, TimedWait_ExpensiveCopying) {
 TEST(UnbufferedChannel, Stress) {
   UnbufferedChannel<int> c;
   const int64_t seed = time(nullptr);
-  LOG(INFO) << "Seed: " << seed;
   RandomGen rng(seed);
   const int num_ops = rng.NextInt(79, 191);
 
@@ -482,8 +479,6 @@ TEST(UnbufferedChannel, Stress) {
     global_sum.fetch_add(local_sum);
   };
 
-  LOG(INFO) << "Launching " << num_producers << " producers and "
-            << num_consumers << " consumers";
   std::vector<std::future<void>> producers;
   for (int i = 0; i < num_producers; ++i) {
     producers.push_back(
@@ -512,10 +507,8 @@ TEST(UnbufferedChannel, Stress) {
 TEST(UnbufferedChannel, Stress_SetEquality) {
   UnbufferedChannel<int> c;
   const int64_t seed = time(nullptr);
-  LOG(INFO) << "Seed: " << seed;
   RandomGen rng(seed);
   const int num_ops = rng.NextInt(79, 378);
-  LOG(INFO) << "Num operations: " << num_ops;
 
   const int num_consumers = rng.NextInt(7, 23);
   const int num_producers = rng.NextInt(11, 31);
@@ -555,8 +548,6 @@ TEST(UnbufferedChannel, Stress_SetEquality) {
     }
   };
 
-  LOG(INFO) << "Launching " << num_producers << " producers and "
-            << num_consumers << " consumers";
   std::vector<std::future<void>> producers;
   for (int i = 0; i < num_producers; ++i) {
     producers.push_back(

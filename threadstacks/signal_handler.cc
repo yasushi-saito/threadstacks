@@ -27,13 +27,7 @@
 
 #include "common/defer.h"
 #include "common/sysutil.h"
-
-namespace google {
-// Symbolize() is provided by the glog library but it's not exposed as a
-// public method via the glog headers. So we have an extern declaration
-// for it here.
-bool Symbolize(void* pc, char* out, int out_size);
-}  // namespace google
+#include "absl/debugging/symbolize.h"
 
 namespace thoughtspot {
 namespace {
@@ -378,7 +372,7 @@ auto StackTraceCollector::Collect(std::string* error) -> std::vector<Result> {
   DEFER(close(timer_fd));
 
   // Step 4: Wait for all the acks, timing out after 5 seconds.
-  int acks = 0;
+  size_t acks = 0;
   while (acks < tids.size()) {
     // Set operations on pipe_fd[0] to be non-blocking. This is important if the
     // select() on this fd returns, but the subsequent read block. This behaviour
@@ -424,7 +418,7 @@ auto StackTraceCollector::Collect(std::string* error) -> std::vector<Result> {
   // Step 6: All acks have been received, post-process the data communicated by
   // threads and produce the final result.
   struct StackComparator {
-    bool operator()(StackTraceForm* a, StackTraceForm* b) {
+    bool operator()(StackTraceForm* a, StackTraceForm* b) const {
       const auto& astack = a->stack();
       const auto& bstack = b->stack();
       if (astack.depth != bstack.depth) {
@@ -461,7 +455,7 @@ auto StackTraceCollector::Collect(std::string* error) -> std::vector<Result> {
     for (int i = 0; i < stack.depth; ++i) {
       std::ostringstream ss;
       char buffer[1024];
-      if (not google::Symbolize(reinterpret_cast<void*>(stack.address[i]),
+      if (not absl::Symbolize(reinterpret_cast<void*>(stack.address[i]),
                                 buffer,
                                 sizeof buffer)) {
         r.trace.emplace_back(stack.address[i], kUnknown);

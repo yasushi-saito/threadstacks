@@ -19,7 +19,6 @@
 #include "common/unbuffered_channel.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "glog/logging.h"
 
 using testing::AllOf;
 using testing::Gt;
@@ -644,7 +643,7 @@ MATCHER_P3(HasSubStack, tid, function_name, count, "") {
 
   bool match_started = false;
   int found = 0;
-  for (int i = 0; i < it->trace.size(); ++i) {
+  for (size_t i = 0; i < it->trace.size(); ++i) {
     const auto& elem = it->trace[i].second;
     if (elem.find(function_name) != std::string::npos) {
       match_started = true;
@@ -694,8 +693,8 @@ TEST_F(StackTraceCollectorTest, Correctness) {
   // Wait for both threads to call their respective functions.
   {
     bool unused;
-    CHECK(out1.Read(&unused));
-    CHECK(out2.Read(&unused));
+    ASSERT_TRUE(out1.Read(&unused));
+    ASSERT_TRUE(out2.Read(&unused));
     ++count1;
     ++count2;
 
@@ -726,14 +725,14 @@ TEST_F(StackTraceCollectorTest, Correctness) {
       in1.Write(true);
       // Ensure that the recursive call is already made.
       bool unused;
-      CHECK(out1.Read(&unused));
+      ASSERT_TRUE(out1.Read(&unused));
       ++count1;
     }
     for (int i = 0; i < num2; ++i) {
       in2.Write(true);
       // Ensure that the recursive call is already made.
       bool unused;
-      CHECK(out2.Read(&unused));
+      ASSERT_TRUE(out2.Read(&unused));
       ++count2;
     }
 

@@ -10,7 +10,6 @@ cc_test(
     srcs = ["unbuffered_channel_test.cc"],
     deps = [":channel",
             ":defer",
-            "//external:glog",
             "//external:gtest_main",],
     visibility = ["//visibility:public"],
 )

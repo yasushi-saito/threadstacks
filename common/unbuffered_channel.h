@@ -5,13 +5,16 @@
 #ifndef COMMON_UNBUFFERED_CHANNEL_H_
 #define COMMON_UNBUFFERED_CHANNEL_H_
 
+#include <unistd.h>
+
 #include <memory>
+#include <cassert>
+#include <cstring>
 #include <condition_variable>
 #include <mutex>
 
 #include "common/channel.h"
 #include "common/defer.h"
-#include "glog/logging.h"
 
 // An UnbufferedChannel is used to facilitate a handshake between a writer and a
 // reader. A writer blocks until there is a reader ready for the handshake.
@@ -37,6 +40,12 @@
 //    reader entered the zone and consumed the value.
 namespace thoughtspot {
 namespace common {
+
+inline void RawFatal(const char *msg) {
+  ::write(2, msg, strlen(msg));
+  abort();
+}
+
 template <typename ValueType>
 class UnbufferedChannel : public Channel<ValueType> {
  public:
@@ -60,7 +69,7 @@ class UnbufferedChannel : public Channel<ValueType> {
       *timedout = true;
       return;
     }
-    LOG_IF(FATAL, closed_) << "Can't write to a closed channel";
+    if (closed_) RawFatal("Can't write to a closed channel");
 
     /////////////////////////// BEGIN: Handshake zone /////////////////////////
 
@@ -97,8 +106,9 @@ class UnbufferedChannel : public Channel<ValueType> {
     //                     update closed_ to false. As the value produced by
     //                     write() has already been consumed by read(), there is
     //                     no need to LOG(FATAL) if the channel has been closed.
-    LOG_IF(FATAL, not reader_in_zone_ && closed_)
-        << "Can't write to a closed channel";
+    if (!reader_in_zone_ && closed_) {
+      RawFatal("Can't write to a closed channel");
+    }
     *timedout = false;
 
     // Signal exactly one pending writer to proceed.
@@ -125,7 +135,7 @@ class UnbufferedChannel : public Channel<ValueType> {
         });
     if (not success) {
       *timedout = true;
-      DCHECK(not closed_);
+      assert(not closed_);
       return false;
     }
     /////////////////////////// BEGIN: Handshake zone /////////////////////////
@@ -135,7 +145,7 @@ class UnbufferedChannel : public Channel<ValueType> {
       return false;
     }
     // Signal the blocked writer to proceed, as the value has been consumed.
-    DCHECK(writter_in_zone_);
+    assert(writter_in_zone_);
     reader_in_zone_ = true;
     *item = *item_;
     handshake_.notify_one();
@@ -146,7 +156,7 @@ class UnbufferedChannel : public Channel<ValueType> {
   void Close() override {
     {
       std::lock_guard<std::mutex> l(m_);
-      LOG_IF(FATAL, closed_) << "Can't close an already closed channel";
+      if (closed_) RawFatal( "Can't close an already closed channel");
       closed_ = true;
     }
     writers_.notify_all();

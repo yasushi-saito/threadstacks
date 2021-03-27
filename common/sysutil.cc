@@ -24,22 +24,20 @@ bool GetDirectoryContents(const std::string& directory,
     return false;
   }
   DEFER(closedir(dir));
-  struct dirent entry;
-  struct dirent* result = nullptr;
-  int posix_error = 0;
   while (true) {
-    posix_error = readdir_r(dir, &entry, &result);
-    if (posix_error != 0 || result == nullptr) {
+    errno = 0;
+    struct dirent* result = readdir(dir);
+    if (result == nullptr) {
       break;
     }
-    const std::string child(entry.d_name);
+    const std::string child(result->d_name);
     if (child == "." || child == "..") {
       continue;
     }
     children->insert(child);
   }
-  if (posix_error != 0) {
-    error->assign("Error reading directory: " + std::to_string(posix_error));
+  if (errno != 0) {
+    error->assign("Error reading directory: " + std::to_string(errno));
     children->clear();
     return false;
   }
