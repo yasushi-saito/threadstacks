@@ -110,7 +110,7 @@ void STLSetDifference(const std::set<T>& first,
                       std::inserter(*difference, difference->end()));
 }
 
-void ErrLog(const char* msg) { write(STDERR_FILENO, msg, strlen(msg)); }
+void ErrLog(const char* msg) { (void)write(STDERR_FILENO, msg, strlen(msg)); }
 
 void InternalHandler(int signum, siginfo_t* siginfo, void* ucontext) {
   // Typically the stacktrace collection signal is sent by a StackTraceCollector
